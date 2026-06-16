@@ -216,3 +216,23 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node.js / Frontend
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+frontend/dist/
+frontend/.vite/
+
+# Django venv
+backend/venv/
+backend/db.sqlite3
+
+# macOS
+.DS_Store
+
+# Environment variables (never commit)
+.env.local
+.env.*.local
