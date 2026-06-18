@@ -5,7 +5,8 @@ import {
 } from 'recharts'
 import { fetchTopTracks, fetchTopArtists } from '../api/spotify'
 import { sendChatMessage } from '../api/chat'
-import type { TopTrack, TopArtist, ChatMessage } from '../types'
+import { fetchTasteProfile } from '../api/ml'
+import type { TopTrack, TopArtist, ChatMessage, TasteProfile } from '../types'
 
 const COLORS = ['#1DB954', '#1ed760', '#169c42', '#0f6b2d', '#0a4a1f', '#17a349', '#22c55e', '#16a34a', '#15803d', '#166534']
 
@@ -26,6 +27,8 @@ function DashboardPage() {
   const [tracks, setTracks] = useState<TopTrack[]>([])
   const [artists, setArtists] = useState<TopArtist[]>([])
   const [genreData, setGenreData] = useState<{ name: string; value: number }[]>([])
+  const [tasteProfile, setTasteProfile] = useState<TasteProfile | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -57,7 +60,15 @@ function DashboardPage() {
       .catch(err => {
         setError(`データの取得に失敗しました: ${err?.response?.data?.error ?? err.message}`)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        setLoading(false)
+        // Fetch taste profile after main data loads (TF inference takes a few seconds)
+        setProfileLoading(true)
+        fetchTasteProfile()
+          .then(setTasteProfile)
+          .catch(() => { /* silently skip if ML endpoint fails */ })
+          .finally(() => setProfileLoading(false))
+      })
   }, [])
 
   const handleSend = async () => {
@@ -167,6 +178,54 @@ function DashboardPage() {
           </section>
         </>
       )}
+
+      {/* Music DNA — TensorFlow ML taste profile */}
+      <section>
+        <h2 style={{ marginBottom: '1rem' }}>Your Music DNA</h2>
+        {profileLoading ? (
+          <p style={{ color: '#888', fontSize: '0.9rem' }}>Analyzing your taste with TensorFlow...</p>
+        ) : tasteProfile && tasteProfile.genres.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <span style={{
+                background: '#1DB954',
+                color: '#fff',
+                padding: '0.4rem 1.2rem',
+                borderRadius: '2rem',
+                fontWeight: 700,
+                fontSize: '1.1rem',
+              }}>
+                {tasteProfile.vibe_type}
+              </span>
+              {tasteProfile.top_genre && (
+                <span style={{ color: '#555', fontSize: '0.9rem' }}>
+                  Top genre: <strong>{tasteProfile.top_genre}</strong>
+                </span>
+              )}
+              <span style={{ color: '#aaa', fontSize: '0.75rem', marginLeft: 'auto' }}>
+                {tasteProfile.genre_source === 'ai-inferred' ? 'Genres inferred by AI · ' : ''}
+                Powered by {tasteProfile.model === 'tensorflow' ? 'TensorFlow' : 'ML Analysis'}
+              </span>
+            </div>
+            <ResponsiveContainer width="100%" height={Math.max(200, tasteProfile.genres.length * 30)}>
+              <BarChart
+                data={[...tasteProfile.genres].reverse()}
+                layout="vertical"
+                margin={{ left: 120, right: 40, top: 4, bottom: 4 }}
+              >
+                <XAxis type="number" domain={[0, 100]} tickCount={6} unit="%" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="genre" tick={{ fontSize: 12 }} width={120} />
+                <Tooltip formatter={(v: number) => [`${v}%`, 'Affinity']} />
+                <Bar dataKey="affinity" fill="#1DB954" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        ) : !profileLoading && (
+          <p style={{ color: '#aaa', fontSize: '0.9rem' }}>
+            Genre data not available from Spotify for your top artists.
+          </p>
+        )}
+      </section>
 
       {/* Chat UI */}
       <section>

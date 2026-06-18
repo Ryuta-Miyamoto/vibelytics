@@ -34,3 +34,16 @@ export type UserProfile = {
   display_name: string
   email: string
 }
+
+export type GenreAffinity = {
+  genre: string
+  affinity: number
+}
+
+export type TasteProfile = {
+  genres: GenreAffinity[]
+  vibe_type: string
+  top_genre: string | null
+  model: 'tensorflow' | 'weighted-average' | 'none'
+  genre_source: 'spotify' | 'ai-inferred'
+}

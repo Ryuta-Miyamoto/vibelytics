@@ -7,4 +7,5 @@ urlpatterns = [
     path('auth/', include('spotify.auth_urls')),
     path('api/', include('spotify.api_urls')),
     path('api/', include('chat.urls')),
+    path('api/ml/', include('ml.urls')),
 ]
